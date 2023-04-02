@@ -1,36 +1,94 @@
-package main
+//go:generate stringer -type=Suit,Rank
 
-type Suit struct{ Name, Symbol string }
+package deck
 
-// Facevalue will be 2 to 10, Jack Queen King ro Ace
-type Facevalue struct {
-	Name  string
-	Value int
-}
+import (
+	"fmt"
+	"sort"
+)
 
-// Card is a Suit and Facevalue
+type Suit uint8
+
+const (
+	Spade Suit = iota
+	Diamond
+	Clove
+	Heart
+	Joker
+)
+
+var suits = [...]Suit{Spade, Diamond, Clove, Heart}
+
+type Rank uint8
+
+const (
+	_ Rank = iota
+	Ace
+	Two
+	Three
+	Four
+	Five
+	Six
+	Seven
+	Eight
+	Nine
+	Ten
+	Jack
+	Queen
+	King
+)
+
+const (
+	minRank = Ace
+	maxRank = King
+)
+
 type Card struct {
-	Suit  Suit
-	Value Facevalue
+	Suit
+	Rank
 }
 
-// GreaterThan tells if one card's Value is GreaterThan the other
-func (card *Card) GreaterThan(b *Card) bool {
-	return card.Value.Value > b.Value.Value
+func (c Card) String() string {
+	if c.Suit == Joker {
+		return c.Suit.String()
+	}
+	return fmt.Sprintf("%s of %ss", c.Rank.String(), c.Suit.String())
 }
 
-// LessThan tells if one card's Value is LessThan the other
-func (card *Card) LessThan(b *Card) bool {
-	return card.Value.Value < b.Value.Value
+func New(options ...func([]Card) []Card) []Card {
+	var cards []Card
+	for _, suit := range suits {
+		for rank := minRank; rank <= maxRank; rank++ {
+			cards = append(cards, Card{Suit: suit, Rank: rank})
+		}
+	}
+
+	for _, options := range options {
+		cards = options(cards)
+	}
+	//every suit and rank
+	//add card(suit,rank)
+	return cards
 }
 
-// Equal returns true or false based on the Facevalue
-func (card *Card) Equal(b *Card) bool {
-	return card.Value.Value == b.Value.Value
+func DefaultSort(cards []Card) []Card {
+	sort.Slice(cards, LessCards(cards))
+	return cards
 }
 
-// Facecard returns true for J,Q,K,A, false for all others
-func (card *Card) Facecard() (ans bool) {
-	n := card.Value.Name
-	return n == "Jack" || n == "Queen" || n == "King" || n == "Ace"
+func Sort(LessCards func(cards []Card) func(i, j int) bool) func([]Card) []Card {
+	return func(cards []Card) []Card {
+		sort.Slice(cards, LessCards(cards))
+		return cards
+	}
+}
+
+func LessCards(cards []Card) func(i, j int) bool {
+	return func(i, j int) bool {
+		return sortA(cards[i]) < sortA(cards[j])
+	}
+}
+
+func sortA(c Card) int {
+	return int(c.Suit)*int(maxRank) + int(c.Rank)
 }
